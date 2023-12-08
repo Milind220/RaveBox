@@ -34,6 +34,7 @@ CRGB* const leds(leds_plus_safety_pixel + 1);
 // Base Globals
 int RKnobValue;
 int LKnobValue;
+int timeInterval;
 
 int8_t mode = 0;
 int lButtonState;
@@ -44,13 +45,16 @@ unsigned long lButtonLastDebounceTime = 0;
 unsigned long rButtonLastDebounceTime = 0;
 unsigned long debounceDelay = 50;
 uint8_t modeFrameCounter = 0;    // Used to generate different frames in modes
+uint8_t counter = 0;
+uint8_t frameLeds[25];
 
 // Timing related things
 unsigned long knobReadDelay = 5;
 unsigned long lastKnobReadTime = 0;
+unsigned long lastFrameTime = 0;
 
 // Function definitions
-void pOutsideIn(int speed, int color, uint8_t counter);    // p prefix means that it's a pattern
+// void pOutsideIn(int interval, int color, uint8_t counter);    // p prefix means that it's a pattern
 
 void setup() {
   Serial.begin(9600);
@@ -71,8 +75,15 @@ void loop() {
   // non blocking delays are used frequently for timing
   if ((millis() - lastKnobReadTime) >= knobReadDelay) {
     LKnobValue = analogRead(L_KNOB_PIN);
-    RKnobValue = analogRead(R_KNOB_PIN);
+    RKnobValue = analogRead(R_KNOB_PIN);     // You can use this for whatever.
+    timeInterval = map(LKnobValue, 0, 1024, 1, 1000);
   }
+  Serial.print("knob left: ");
+  Serial.print(LKnobValue);
+  Serial.print(" R knob: ");
+  Serial.print(RKnobValue);
+  Serial.print(" mode: ");
+  Serial.println(mode);
   // read buttons
   int lButtonReading = digitalRead(L_BUTTON_PIN);   
   int rButtonReading = digitalRead(R_BUTTON_PIN);
@@ -100,7 +111,8 @@ void loop() {
 
   switch (mode) {
     case 0:
-      pOutsideIn( , RKnobValue, counter);
+      Serial.println("pattern 1 go brrr!");
+      // pOutsideIn(timeInterval, RKnobValue);
       break;
   } 
   // Part of the button debounce logic
@@ -108,87 +120,139 @@ void loop() {
   rButtonLastState = rButtonReading;
 }
 
-// pattern functions 
-void pOutsideIn(int speed, int color, uint8_t counter) {
-  FastLED.clear();
-  hue = map(color, 0, 1024, 0, 256 );
-  CRGB color = CHSV( hue, 200, 200);
-  if (counter == 0) {
-    leds[XY(0,0)] = color;
-    leds[XY(0,1)] = color;
-    leds[XY(0,2)] = color;
-    leds[XY(0,3)] = color;
-    leds[XY(0,4)] = color;
-    leds[XY(0,5)] = color;
-    leds[XY(0,6)] = color;
-    leds[XY(0,7)] = color;
-    leds[XY(1,7)] = color;
-    leds[XY(2,7)] = color;
-    leds[XY(3,7)] = color;
-    leds[XY(4,7)] = color;
-    leds[XY(5,7)] = color;
-    leds[XY(6,7)] = color;
-    leds[XY(1,0)] = color;
-    leds[XY(2,0)] = color;
-    leds[XY(3,0)] = color;
-    leds[XY(4,0)] = color;
-    leds[XY(5,0)] = color;
-    leds[XY(6,0)] = color;
-    leds[XY(7,0)] = color;
-    leds[XY(7,1)] = color;
-    leds[XY(7,2)] = color;
-    leds[XY(7,3)] = color;
-    leds[XY(7,4)] = color;
-    leds[XY(7,5)] = color;
-    leds[XY(7,6)] = color;
-    leds[XY(7,7)] = color;
-  }
-  else if (counter == 1) {
-    leds[XY(1,1)] = color;
-    leds[XY(1,2)] = color;
-    leds[XY(1,3)] = color;
-    leds[XY(1,4)] = color;
-    leds[XY(1,5)] = color;
-    leds[XY(1,6)] = color;
-    leds[XY(2,1)] = color;
-    leds[XY(2,6)] = color;
-    leds[XY(3,1)] = color;
-    leds[XY(3,6)] = color;
-    leds[XY(4,1)] = color;
-    leds[XY(4,6)] = color;
-    leds[XY(5,1)] = color;
-    leds[XY(5,6)] = color;
-    leds[XY(6,1)] = color;
-    leds[XY(6,2)] = color;
-    leds[XY(6,3)] = color;
-    leds[XY(6,4)] = color;
-    leds[XY(6,5)] = color;
-    leds[XY(6,6)] = color;
-  }
-  else if (counter == 2) {
-    leds[XY(2,2)] = color;
-    leds[XY(2,3)] = color;
-    leds[XY(2,4)] = color;
-    leds[XY(2,5)] = color;
+// pattern functions
 
-    leds[XY(3,2)] = color;
-    leds[XY(3,5)] = color;
-    leds[XY(4,2)] = color;
-    leds[XY(4,5)] = color;
-    
-    leds[XY(5,2)] = color;
-    leds[XY(5,3)] = color;
-    leds[XY(5,4)] = color;
-    leds[XY(5,5)] = color;
+void pOutsideIn(int interval, int colorVal) {
+
+  FastLED.clear();
+  // Assign color to LEDs
+  uint8_t hue = map(colorVal, 0, 1024, 0, 256 );
+  CRGB color = CHSV( hue, 255, 255 );
+   
+  // Select LEDs to be lit up 
+  if ((millis() - lastFrameTime) >= interval) {
+    if (counter == 0) {
+      leds[XY(0,0)] = color;
+      leds[XY(0,1)] = color;
+      leds[XY(0,2)] = color;
+      leds[XY(0,3)] = color;
+      leds[XY(0,4)] = color;
+      leds[XY(0,5)] = color;
+      leds[XY(0,6)] = color;
+      leds[XY(0,7)] = color;
+      leds[XY(1,7)] = color;
+      leds[XY(2,7)] = color;
+      leds[XY(3,7)] = color;
+      leds[XY(4,7)] = color;
+      leds[XY(5,7)] = color;
+      leds[XY(6,7)] = color;
+      leds[XY(1,0)] = color;
+      leds[XY(2,0)] = color;
+      leds[XY(3,0)] = color;
+      leds[XY(4,0)] = color;
+      leds[XY(5,0)] = color;
+      leds[XY(6,0)] = color;
+      leds[XY(7,0)] = color;
+      leds[XY(7,1)] = color;
+      leds[XY(7,2)] = color;
+      leds[XY(4,7)] = color;
+      leds[XY(5,7)] = color;
+      leds[XY(6,7)] = color;
+      leds[XY(1,0)] = color;
+      leds[XY(2,0)] = color;
+      leds[XY(3,0)] = color;
+      leds[XY(4,0)] = color;
+      leds[XY(5,0)] = color;
+      leds[XY(6,0)] = color;
+      leds[XY(7,0)] = color;
+      leds[XY(7,1)] = color;
+      leds[XY(7,2)] = color;
+      leds[XY(7,3)] = color;
+      leds[XY(7,4)] = color;
+      leds[XY(7,5)] = color;
+      leds[XY(7,6)] = color;
+      leds[XY(7,7)] = color;
+    }
+    else if (counter == 1) {
+      leds[XY(1,1)] = color;
+      leds[XY(1,2)] = color;
+      leds[XY(1,3)] = color;
+      leds[XY(1,4)] = color;
+      leds[XY(1,5)] = color;
+      leds[XY(1,6)] = color;
+      leds[XY(2,1)] = color;
+      leds[XY(2,6)] = color;
+      leds[XY(3,1)] = color;
+      leds[XY(3,6)] = color;
+      leds[XY(4,1)] = color;
+      leds[XY(4,6)] = color;
+      leds[XY(5,1)] = color;
+      leds[XY(5,6)] = color;
+      leds[XY(6,1)] = color;
+      leds[XY(6,2)] = color;
+      leds[XY(6,3)] = color;
+      leds[XY(6,4)] = color;
+      leds[XY(6,5)] = color;
+      leds[XY(6,6)] = color;
+    }
+    else if (counter == 2) {
+      leds[XY(2,2)] = color;
+      leds[XY(2,3)] = color;
+      leds[XY(2,4)] = color;
+      leds[XY(2,5)] = color;
+
+      leds[XY(3,2)] = color;
+      leds[XY(3,5)] = color;
+      leds[XY(4,2)] = color;
+      leds[XY(4,5)] = color;
+
+      leds[XY(5,2)] = color;
+      leds[XY(5,3)] = color;
+      leds[XY(5,4)] = color;
+      leds[XY(5,5)] = color;
+    }
+    else {
+      leds[XY(3,3)] = color;
+      leds[XY(3,4)] = color;
+      leds[XY(4,3)] = color;
+      leds[XY(4,4)] = color;
+    }
+  lastFrameTime = millis();
+  FastLED.show();
   }
-  else {
-    leds[XY(3,3)] = color;
-    leds[XY(3,4)] = color;
-    leds[XY(4,3)] = color;
-    leds[XY(4,4)] = color;
-  }
-  FastLed.show();    // TODO: Maybe move this and FastLED.clear() out of the function and into the main loop for less repetition.
 }
 
 // helper functions
+uint16_t XY( uint8_t x, uint8_t y)
+{
+  uint16_t i;
+  
+  if( kMatrixSerpentineLayout == false) {
+    if (kMatrixVertical == false) {
+      i = (y * kMatrixWidth) + x;
+    } else {
+      i = kMatrixHeight * (kMatrixWidth - (x+1))+y;
+    }
+  }
+
+  if( kMatrixSerpentineLayout == true) {
+    if (kMatrixVertical == false) {
+      if( y & 0x01) {
+        // Odd rows run backwards
+        uint8_t reverseX = (kMatrixWidth - 1) - x;
+        i = (y * kMatrixWidth) + reverseX;
+      } else {
+        // Even rows run forwards
+        i = (y * kMatrixWidth) + x;
+      }
+    } else { // vertical positioning
+      if ( x & 0x01) {
+        i = kMatrixHeight * (kMatrixWidth - (x+1))+y;
+      } else {
+        i = kMatrixHeight * (kMatrixWidth - x) - (y+1);
+      }
+    }
+  }
+  return i;
+}
 
